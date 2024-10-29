@@ -1,12 +1,20 @@
+# -*- coding: utf-8 -*-
+
 import argparse
+import csv
 import json
 import os
 import random
 import sys
 
-mozliwe_pory_dnia = {'r': 'rano', 'w': 'wieczór'}
-mozliwe_dni_tygodnia = {'pn': 'poniedziałek', 'wt': 'wtorek', 'sr': 'środa',
+MOZLIWE_PORY_DNIA = {'r': 'rano', 'w': 'wieczór'}
+MOZLIWE_DNI_TYGODNIA = {'pn': 'poniedziałek', 'wt': 'wtorek', 'sr': 'środa',
                         'cw': 'czwartek', 'pt': 'piątek', 'sb': 'sobota', 'nd': 'niedziela'}
+
+MOZLIWE_MIESIACE = {'styczeń', 'luty', 'marzec', 'kwiecień', 'maj',
+                        'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'}
+
+CSV_HEADER = ["Model", "Output value", "Time of computation"]
 
 
 def generate_random_data():
@@ -81,46 +89,46 @@ def parser_init():
 def months_check(arguments):
     # Gdy miesiące nie zostały podane kończymy program
     if not arguments.miesiace:
-        sys.exit(0)
+        raise ValueError("Nie podano miesięcy")
 
     # Sprawdzenie czy podano poprawne nazwy miesięcy
-    mozliwe_miesiace = {'styczeń', 'luty', 'marzec', 'kwiecień', 'maj',
-                        'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'}
-
-    if not set(arguments.miesiace).issubset(mozliwe_miesiace):
-        print("Błąd: Podano niepoprawną nazwę miesiąca.\n"
-              "Nazwę podajemy z małej litery i z polskimi znakami: \n"
-              "np. styczeń\n")
-        sys.exit(1)
+    if not set(arguments.miesiace).issubset(MOZLIWE_MIESIACE):
+        raise ValueError(
+            "Podano niepoprawną nazwę miesiąca.\n"
+            "Nazwę podajemy z małej litery i z polskimi znakami: \n"
+            "np. styczeń\n"
+        )
 
     # Sprawdzenie czy każdy miesiąc podano tylko raz
     if len(arguments.miesiace) != len(set(arguments.miesiace)):
-        print("Błąd: Podano niepoprawną nazwę miesiąca.\n"
-              "Nazwę danego miesiąca można podać tylko raz.\n")
-        sys.exit(1)
-
+        raise ValueError(
+            "Podano niepoprawną nazwę miesiąca.\n"
+            "Nazwę danego miesiąca można podać tylko raz.\n"
+        )
 
 def days_range_check(arguments):
     # Sprawdzenie czy ilość zakresów dni tygodnia odpowaida ilości miesięcy
     if len(arguments.miesiace) != len(arguments.zakres_dni_tygodnia):
-        print("Błąd: Ilość zakresów dni tygodnia nie odpowiada ilości podanych miesięcy.\n "
-              "Należy podać tyle zakresów ile zostało podanych miesięcy.\n")
-        sys.exit(1)
+        raise ValueError(
+            "Błąd: Ilość zakresów dni tygodnia nie odpowiada ilości podanych miesięcy.\n "
+            "Należy podać tyle zakresów ile zostało podanych miesięcy.\n"
+        )
 
     # Sprawdzenie czy podano poprawny zakres dni tygodnia
     for el in arguments.zakres_dni_tygodnia:
         wynik = el.split("-")
         for d in wynik:
-            if d not in mozliwe_dni_tygodnia:
-                print("Błąd: Podano niepoprawny format zakresu tygodnia\n"
-                      "Dostępne dni to: pn, wt, sr, cw, pt, sb, nd\n"
-                      "Dni w zakresie rozdzielamy znakiem -\n"
-                      "np. pn-pt")
-                sys.exit(1)
+            if d not in MOZLIWE_DNI_TYGODNIA:
+                raise ValueError(
+                    "Błąd: Podano niepoprawny format zakresu tygodnia\n"
+                    "Dostępne dni to: pn, wt, sr, cw, pt, sb, nd\n"
+                    "Dni w zakresie rozdzielamy znakiem -\n"
+                    "np. pn-pt"
+                )
 
     # Zamiana zakresu na listy dni tygodnia
     # Definiujemy dostępne dni tygodnia
-    mozliwe_dni = list(mozliwe_dni_tygodnia.keys())
+    mozliwe_dni = list(MOZLIWE_DNI_TYGODNIA.keys())
 
     for dzien in arguments.zakres_dni_tygodnia:
         # Sprawdzamy, czy dany element jest zakresem
@@ -143,7 +151,6 @@ def days_range_check(arguments):
         else:
             arguments.zakres_dni_tygodnia[arguments.zakres_dni_tygodnia.index(dzien)] = [dzien]
 
-
 def daytime_check(arguments):
     # Sprawdzenie czy ilosc pór dnia jest poprawna
     ilosc_dni = 0
@@ -151,36 +158,43 @@ def daytime_check(arguments):
         ilosc_dni += len(arguments.zakres_dni_tygodnia[i])
 
     if len(arguments.pora_dnia) > ilosc_dni:
-        print("Błąd: Podano niepoprawną ilość pór dnia. \n"
-              "Na każdy podany dzień w każdym miesiącu przypada jedna pora dnia\n")
-        sys.exit(1)
+        raise ValueError(
+            "Błąd: Podano niepoprawną ilość pór dnia. \n"
+            "Na każdy podany dzień w każdym miesiącu przypada jedna pora dnia\n"
+        )
 
     # Sprawdzenie czy poprawnie podano wartości dla pory dnia
-    if not set(arguments.pora_dnia).issubset(mozliwe_pory_dnia):
-        print("Błąd: Możliwe pory dnia to: r, w.\n"
-              "Podano nieoprawną porę dnia.\n")
-        sys.exit(1)
+    if not set(arguments.pora_dnia).issubset(MOZLIWE_PORY_DNIA):
+        raise ValueError(
+            "Błąd: Możliwe pory dnia to: r, w.\n"
+            "Podano nieoprawną porę dnia.\n"
+        )
 
     # Uzupełnienie listy pora_dnia wartościami domyślnymi
     if len(arguments.pora_dnia) < ilosc_dni:
         while len(arguments.pora_dnia) < ilosc_dni:
             arguments.pora_dnia.append('r')
 
-
 def args_check(arguments):
     # Sprawdzenie poprawności podanych parametrów
-    months_check(arguments)
-    days_range_check(arguments)
-    daytime_check(arguments)
+    try:
+        months_check(arguments)
+        days_range_check(arguments)
+        daytime_check(arguments)
+    except ValueError as e:
+        print("VALUE ERROR: ", e, file=sys.stderr)
+        exit(1)
 
 
 def write_to_file(sciezka_do_pliku):
     write_file = False
 
+    os.makedirs(os.path.dirname(sciezka_do_pliku), exist_ok=True)
+
     if os.path.isfile(sciezka_do_pliku):
         print(f"Podany plik {sciezka_do_pliku} istnieje.\n"
               "Jeśli chcesz go nadpisać wpisz: y\n"
-              "Jeśli nie, wciśnij dowolny przycisk.\n")
+              "Jeśli nie, wciśnij dowolny przycisk")
         if not input() == 'y':
             pass
         else:
@@ -189,7 +203,7 @@ def write_to_file(sciezka_do_pliku):
         write_file = True
 
     if write_file:
-        with open(sciezka_do_pliku, 'w') as plik:
+        with open(sciezka_do_pliku, 'w', newline='') as plik:
             # Piszemy do pliku:
             # JSON
             if args.j:
@@ -200,19 +214,38 @@ def write_to_file(sciezka_do_pliku):
                 json.dump(data, plik, indent=4)
             # CSV
             else:
-                plik.write("Model; Output value; Time of computation;\n")
-                model, output_value, computation_time = generate_random_data()
-                plik.write(f"{model}; {output_value}; {computation_time}s;\n")
+                write_csv(plik, list(generate_random_data()))
 
+def write_csv(file, data):
+    writer = csv.writer(file, delimiter=';')
+    writer.writerow(CSV_HEADER)
+    writer.writerow(data)
 
 def read_from_file(sciezka_do_pliku):
     if os.path.isfile(sciezka_do_pliku):
-        with open(sciezka_do_pliku, 'r') as plik:
+        with open(sciezka_do_pliku, 'r', newline='') as plik:
             # Odczytujemy informacje z pliku:
-            pass
+            if args.j:
+                # TODO:
+                pass
+            else:
+                return read_csv(plik)
     else:
         print(f"Podany plik {sciezka_do_pliku} nie istnieje.\n")
 
+def read_csv(file, model = 'A'):
+    reader = csv.reader(file, delimiter=';')
+
+    headers = next(reader)
+    model_at = headers.index(CSV_HEADER[0])
+    time_at = headers.index(CSV_HEADER[2])
+
+    sum = 0
+    for row in reader:
+        if row[model_at] == model:
+            sum += int(row[time_at])
+
+    return sum
 
 def read_write_files():
     # Tworzenie struktury katalogu i odczytanie/tworzenie plików
@@ -231,10 +264,10 @@ def read_write_files():
 
         for dzien in dni_tygodnia:
             # Tworzymy katalog dla dnia
-            sciezka_dnia = os.path.join(sciezka_miesiaca, mozliwe_dni_tygodnia[dzien])
+            sciezka_dnia = os.path.join(sciezka_miesiaca, MOZLIWE_DNI_TYGODNIA[dzien])
 
             # Tworzymy katalog dla pory dnia
-            pora = mozliwe_pory_dnia[args.pora_dnia[j]]
+            pora = MOZLIWE_PORY_DNIA[args.pora_dnia[j]]
             j += 1
 
             sciezka_pory = os.path.join(sciezka_dnia, pora)
@@ -259,4 +292,5 @@ def read_write_files():
 
 args = parser_init().parse_args()
 args_check(args)
+
 read_write_files()
