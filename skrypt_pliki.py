@@ -226,8 +226,7 @@ def read_from_file(sciezka_do_pliku):
         with open(sciezka_do_pliku, 'r', newline='') as plik:
             # Odczytujemy informacje z pliku:
             if args.j:
-                # TODO:
-                pass
+                return read_json(plik)
             else:
                 return read_csv(plik)
     else:
@@ -246,6 +245,20 @@ def read_csv(file, model = 'A'):
             sum += int(row[time_at])
 
     return sum
+
+def read_json(file, model='A'):
+    data = json.load(file)
+    data_rows = data.get("Data", [])
+
+    total_time = 0
+    for row in data_rows:
+        if row.get("Model") == model:
+            time = row.get("Time of computation", "0s")
+            time_int = int(time.rstrip('s'))
+            total_time += time_int
+
+    return total_time
+
 
 def read_write_files():
     # Tworzenie struktury katalogu i odczytanie/tworzenie plików
